@@ -187,6 +187,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         if (counter == 0) {
             defineInitMass(apt);
         }
+        counter++;
 
         switch (direction) {
         case 0:
