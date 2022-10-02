@@ -1,4 +1,4 @@
-﻿#include "framework.h"
+#include "framework.h"
 #include "WindowsProject1.h"
 #include <Windows.h>
 #include <stdio.h>
@@ -34,10 +34,9 @@ int step = 4;
 int food = 0;//еда
 int counter = 0;//счетчик цикла
 int snakeLenght = 0;//счетчик длины змеи
-int StartSpeed = 500; //стартовое время обновления счетчика
+int startSpeed = 500; //стартовое время обновления счетчика
 int startPontX = 250;
 int startPontY = 100;
-int insideCxClient=250, insideCyClient=250;
 
 POINT apt[LENGHT_ARR] = {0,0};
 POINT masForDel[LENGHT_ARR] = { 0,0 };
@@ -108,17 +107,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     static int  cxChar, cxCaps, cyChar, cxClient, cyClient;
-    TCHAR       szBuffer[10], sz1Buffer[10];
+    TCHAR       szBuffer[40], sz1Buffer[40];
     HDC         hdc;
-    int         i, ifMeet;
+    int         i, ifMeet, iStartSpeed, iLengthSnake, iSpeed;
     PAINTSTRUCT ps;
     TEXTMETRIC  tm;
-    //int maxWinLen, insideCxClient, insideCyClient;
-    HPEN hPenBlack, hPenFrame, hPenWhite;
-    static HPEN hPenRed;
-    HBRUSH hBrushHead, hBrushBody, hBrushEnd, hBrushFood;
-    //int xstartPont = 250, ystartPont = 100;
-    //int direction;
+    static HPEN hPenBlack, hPenFrame, hPenWhite;
+    static HBRUSH hBrushHead, hBrushBody, hBrushEnd, hBrushFood;
     POINT newCordinate;
     
 
@@ -128,10 +123,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_CREATE:
         hdc = GetDC(hwnd);
 
-        GetTextMetrics(hdc, &tm);
-        cxChar = tm.tmAveCharWidth;
-        cxCaps = (tm.tmPitchAndFamily & 1 ? 3 : 2) * cxChar / 2;
-        cyChar = tm.tmHeight + tm.tmExternalLeading;
+        SetTimer(hwnd, ID_TIMER, startSpeed, NULL);
+
+        hPenBlack = CreatePen(PS_SOLID, 1, RGB(0, 0, 0)); //black pen
+        hPenWhite = CreatePen(PS_SOLID, 1, RGB(255, 255, 255)); //white pen
+        hPenFrame = CreatePen(PS_DASHDOT, step, RGB(255, 0, 0)); //frame pen
 
         ReleaseDC(hwnd, hdc);
         return 0;
@@ -175,25 +171,26 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
         return 0;
 
-    case WM_PAINT:
-        SetTimer(hwnd, ID_TIMER, 500, NULL);
+    case WM_PAINT:        
         hdc = BeginPaint(hwnd, &ps);
+        
 
-        hBrushHead = CreateHatchBrush(HS_DIAGCROSS, RGB(255, 0, 0)); //Фон для головы
-        hBrushBody = CreateSolidBrush(RGB(0, 255, 0)); //Фон для тела
+
+        //hBrushHead = CreateHatchBrush(HS_DIAGCROSS, RGB(255, 0, 0)); //Фон для головы (сеточка)
+        hBrushHead = CreateSolidBrush(RGB(255, 255, 0)); //Фон для головы (желтый)
+        hBrushBody = CreateSolidBrush(RGB(0, 255, 0)); //Фон для тела (зеленый)
         hBrushEnd = CreateSolidBrush(RGB(255, 255, 255)); //Фон для удаления
-        hBrushFood = CreateSolidBrush(RGB(255, 0, 0)); //Фон для удаления
+        hBrushFood = CreateSolidBrush(RGB(255, 0, 0)); //Фон для еды (красный)        
 
-        hPenBlack = CreatePen(PS_SOLID, 1, RGB(0, 0, 0)); //black pen
-        hPenWhite = CreatePen(PS_SOLID, 1, RGB(255,255, 255)); //white pen
-        hPenFrame = CreatePen(PS_DASHDOT, step, RGB(255, 0, 0)); //frame pen
-
-        SelectObject(hdc, hPenFrame);
-
+        
         if (counter == 0) {
             defineInitMass(apt);
         }
+       iStartSpeed = (int)(startSpeed * (1.0 + (snakeLenght / 10.0))); //TODO Подумать, как ускорять таймер. Пока что-то считает, но не передает в таймер
+        
+        
 
+        SelectObject(hdc, hPenFrame);
         Rectangle(hdc, step + step / 2, step+ step / 2, W_LENGHT - (step/2), H_LENGHT - (step / 2)); // Рисуем область, в которой будет ползать змея
 
         SelectObject(hdc, hPenBlack);
@@ -201,15 +198,16 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         newCordinate = selectDirection(direction);
         
-        ifMeet = cheekMeetingWithCordinate();
-        if (ifMeet == 1) {
-            SendMessage(hwnd, WM_DESTROY, 0, 0);
-        }
         moveSnake(apt, LENGHT_ARR, newCordinate, food);
         if (snakeLenght == LENGHT_ARR - 1) {
             SendMessage(hwnd, WM_TIMER, -1, 0);
         }
 
+        ifMeet = cheekMeetingWithCordinate();
+        if (ifMeet == 1) {
+            SendMessage(hwnd, WM_DESTROY, 0, 0);
+        }
+        
         SelectObject(hdc, hPenWhite);
         if (counter != 0) {
             if ((lastCordinate.x != 0) && ((lastCordinate.x != apt[0].x) || (lastCordinate.y != apt[0].y))) {
@@ -226,15 +224,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             switch (i) {
             case 0:
                 SelectObject(hdc, hBrushHead);
-                Rectangle(hdc, apt[i].x, apt[i].y, apt[i].x + step + 1, apt[i].y + step + 1);
+                Ellipse (hdc, apt[i].x, apt[i].y, apt[i].x + step + 1, apt[i].y + step + 1);
                 break;
             default:
                 SelectObject(hdc, hBrushBody);
-                Rectangle(hdc, apt[i].x, apt[i].y, apt[i].x + step + 1, apt[i].y + step + 1);
+                Ellipse (hdc, apt[i].x, apt[i].y, apt[i].x + step + 1, apt[i].y + step + 1);
                 break;
             }
         }
-            
         
         if ((foodCord.x == 0) || (foodCord.y == 0)) {
             break;
@@ -243,6 +240,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             SelectObject(hdc, hBrushFood);
             Ellipse(hdc, foodCord.x, foodCord.y, foodCord.x + step + 1, foodCord.y + step + 1);
         }
+
+        iLengthSnake = wsprintf(szBuffer, TEXT("The snake leght is %i"),
+            snakeLenght);
+        TextOut(hdc, W_LENGHT - 200, 20, szBuffer, iLengthSnake);
+        iSpeed = wsprintf(sz1Buffer, TEXT("The speed is %i"),
+            startSpeed);
+        TextOut(hdc, W_LENGHT - 200, 40, sz1Buffer, iSpeed);
 
 
 
@@ -253,20 +257,22 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         counter++;
 
+
         DeleteObject(SelectObject(hdc, hBrushBody));
         DeleteObject(SelectObject(hdc, hBrushHead));
         DeleteObject(SelectObject(hdc, hBrushEnd));
         DeleteObject(SelectObject(hdc, hBrushFood));
-
-
-        DeleteObject(hPenBlack);
-        DeleteObject(hPenFrame);
-        DeleteObject(hPenWhite);
+        
 
         EndPaint(hwnd, &ps);
         return 0;
 
     case WM_DESTROY:
+        DeleteObject(hPenBlack);
+        DeleteObject(hPenFrame);
+        DeleteObject(hPenWhite);
+
+
         KillTimer(hwnd, ID_TIMER);
         PostQuitMessage(0);
         return 0;
@@ -346,11 +352,8 @@ void defineInitMass(POINT* point) {
     apt[3].x = xstartPont + step;
     apt[3].y = ystartPont + step * 2;
     apt[4].x = xstartPont + step;
-    apt[4].y = ystartPont + step * 3;/*
-    apt[5].x = xstartPont + step;
-    apt[5].y = ystartPont + step * 4;
-    apt[6].x = xstartPont + step;
-    apt[6].y = ystartPont + step * 5;*/
+    apt[4].y = ystartPont + step * 3;
+    snakeLenght = 5;
 }
 
 void createFood() {
@@ -363,7 +366,7 @@ void createFood() {
 // TODO Надо как-то попраавить на милисекунды
 int randomValue(int Max) { 
     srand(time(NULL));   // Initialization, should only be called once.
-    int r = rand() % (Max - step - (step / 2))+step+(step/2);
+    int r = rand() % (Max - ((step + (step / 2))*2)) + step + (step / 2);
     return r;
 }
 
@@ -411,7 +414,7 @@ int cheekMeetingWithCordinate() {
         }
     }
 
-    if ((apt[0].x == step*2) || (apt[0].y == step * 2) ||(apt[0].y == normalise(W_LENGHT) - step * 2) || (apt[0].y == normalise(H_LENGHT) - step * 2)) {
+    if ((apt[0].x == step) || (apt[0].y == step) ||(apt[0].y == normalise(W_LENGHT) - step) || (apt[0].y == normalise(H_LENGHT) - step)) {
         return 1;
     }
 }
