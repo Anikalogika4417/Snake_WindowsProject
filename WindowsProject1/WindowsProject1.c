@@ -1,4 +1,4 @@
-﻿#include "framework.h"
+#include "framework.h"
 #include "WindowsProject1.h"
 #include <Windows.h>
 #include <stdio.h>
